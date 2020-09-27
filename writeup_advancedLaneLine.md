@@ -68,49 +68,84 @@ Consequently I also added the function `load_calibration_data` which loads exact
 #### 1. Provide an example of a distortion-corrected image.
 
 To demonstrate this step, I will describe how I apply the distortion correction to one of the test images like this one:
-![alt text][image2]
+
+<p>
+    <img src="./output_images/test3_undist.jpg" alt="undistored image" width="400"/>
+    <br>
+    <em>Undistorted test image</em>
+</p>
+
+The distorton correction is performed in one step with binary thresholding and the perspective transform in the `get_binary_warped()` function in cell 27 of "./Advanced Lane Line Detection Project.ipynb". The function uses the original image and the camera calibration as input to perform the correction.
 
 #### 2. Describe how (and identify where in your code) you used color transforms, gradients or other methods to create a thresholded binary image.  Provide an example of a binary image result.
 
-I used a combination of color and gradient thresholds to generate a binary image (thresholding steps at lines # through # in `another_file.py`).  Here's an example of my output for this step.  (note: this is not actually from one of the test images)
+I used a combination of color, gradient saturation and lightning thresholds to generate a binary image (thresholding steps at´re performed in `get_binary_warped()` function in cell 27 of "./Advanced Lane Line Detection Project.ipynb").  Here's an example of my output for this step.
 
-![alt text][image3]
+<p>
+    <img src="./output_images/test3_pipeline_result.jpg" alt="Pipeline result image" width="400"/>
+    <br>
+    <em>Result of binary thresholding preocess of test image</em>
+</p>
 
 #### 3. Describe how (and identify where in your code) you performed a perspective transform and provide an example of a transformed image.
 
-The code for my perspective transform includes a function called `warper()`, which appears in lines 1 through 8 in the file `example.py` (output_images/examples/example.py) (or, for example, in the 3rd code cell of the IPython notebook).  The `warper()` function takes as inputs an image (`img`), as well as source (`src`) and destination (`dst`) points.  I chose the hardcode the source and destination points in the following manner:
+The perspective transform is included in the same pipeline `get_binary_warped` and uses the `cv2.warpPerspective()` function. (output_images/examples/example.py) (or, for example, in the 3rd code cell of the IPython notebook).  The `get_binary_warped()` function takes as inputs an image (`img`), the transformation matrix `transforamtion_matrix` as well as source (`src`) and destination (`dst`) points.  I chose the hardcode the source and destination points in the following manner:
 
 ```python
-src = np.float32(
-    [[(img_size[0] / 2) - 55, img_size[1] / 2 + 100],
-    [((img_size[0] / 6) - 10), img_size[1]],
-    [(img_size[0] * 5 / 6) + 60, img_size[1]],
-    [(img_size[0] / 2 + 55), img_size[1] / 2 + 100]])
-dst = np.float32(
-    [[(img_size[0] / 4), 0],
-    [(img_size[0] / 4), img_size[1]],
-    [(img_size[0] * 3 / 4), img_size[1]],
-    [(img_size[0] * 3 / 4), 0]])
+src = np.float32([[(190,image.shape[0]),
+                   (575, 460), 
+                   (710, 460), 
+                   (1150,image.shape[0])]]) 
+x_ofs = 50
+dst = np.float32([
+                 [x_ofs,image.shape[0]], 
+                 [x_ofs,0],
+                 [image.shape[1] - x_ofs,0], 
+                 [image.shape[1] - x_ofs,image.shape[0]]])
 ```
 
 This resulted in the following source and destination points:
 
 | Source        | Destination   | 
 |:-------------:|:-------------:| 
-| 585, 460      | 320, 0        | 
-| 203, 720      | 320, 720      |
-| 1127, 720     | 960, 720      |
-| 695, 460      | 960, 0        |
+| 190, 720      | 320, 720        | 
+| 575, 460      | 320, 0      |
+| 1150, 720     | 960, 0      |
+| 1150, 720      | 960, 720        |
 
 I verified that my perspective transform was working as expected by drawing the `src` and `dst` points onto a test image and its warped counterpart to verify that the lines appear parallel in the warped image.
 
-![alt text][image4]
+<p>
+    <img src="./output_images/straight_lines1_undist_line.jpg" alt="Distortion corrected image with source points" width="400"/>
+    <br>
+    <em>Distortion corrected image with source points</em>
+</p>
+
+<p>
+    <img src="./output_images/straight_lines1_warped_line.jpg" alt="Warped image to "bird eyes" view with destination points" width="400"/>
+    <br>
+    <em>Warped image to "bird eyes" view with destination points</em>
+</p>
 
 #### 4. Describe how (and identify where in your code) you identified lane-line pixels and fit their positions with a polynomial?
 
-Then I did some other stuff and fit my lane lines with a 2nd order polynomial kinda like this:
+To finally detect the lane lines pixes I created a `Line()` class to keep track of the detected lines. Also the functions to detect the lines are part of the `Line()` class.
+To detect the line I created the `get_line()` function, which takes in a binary and warped image `binary_warped` and finally updates the line. To do so the following steps are performed:
 
-![alt text][image5]
+1. Check if a line was detected in last iteration
+    * If yes: Search for the new line based on the old line with `search_around_poly()` function
+    * If not: Search the new line using a histogram to find lane line pixels with `find_lane_line()` function
+    * Both functions return the positions of pixels idetified as lane line
+2. Fit a second order polynominal function on th detected lane line pixels using the `fit_poly()` function. The mathematical equation for the polynom is $y=A \cdot x^2 +  \cdot x + C$. The function itself uses numpys `polyfit()` function to optimize the parameters $A$, $B$ and $C$, to match best possible all line pixels `self.allx` and `self.ally`.
+3. Finaly the result is filtered over several number of image(s) (frames) to get a smoother result. The number of iteration could be set using the variable `self.filter_n`. The higher the number is the slower the function reacts on changes of the lane line.
+
+The following image shows the t´detected line pixels onthe original image for two lines - the left and right lane line:
+
+<p>
+    <img src="./output_images/straight_lines1_warped_line_colored.jpg" alt="Warped image to "bird eyes" view with destination points" width="400"/>
+    <br>
+    <em>Warped image in "bird eyes" view with detected lane line pixels</em>
+</p>
 
 #### 5. Describe how (and identify where in your code) you calculated the radius of curvature of the lane and the position of the vehicle with respect to center.
 
