@@ -136,7 +136,7 @@ To detect the line I created the `get_line()` function, which takes in a binary 
     * If yes: Search for the new line based on the old line with `search_around_poly()` function
     * If not: Search the new line using a histogram to find lane line pixels with `find_lane_line()` function
     * Both functions return the positions of pixels idetified as lane line
-2. Fit a second order polynominal function on th detected lane line pixels using the `fit_poly()` function. The mathematical equation for the polynom is $y=A \cdot x^2 +  \cdot x + C$. The function itself uses numpys `polyfit()` function to optimize the parameters $A$, $B$ and $C$, to match best possible all line pixels `self.allx` and `self.ally`.
+2. Fit a second order polynominal function on the detected lane line pixels using the `fit_poly()` function. The mathematical equation for the polynom is <img src="https://render.githubusercontent.com/render/math?math=y = A \cdot x^2 %2B B \cdot x %2B C">. The function itself uses numpys `polyfit()` function to optimize the parameters A, B and C, to match best possible all line pixels `self.allx` and `self.ally`.
 3. Finaly the result is filtered over several number of image(s) (frames) to get a smoother result. The number of iteration could be set using the variable `self.filter_n`. The higher the number is the slower the function reacts on changes of the lane line.
 
 The following image shows the t´detected line pixels onthe original image for two lines - the left and right lane line:
@@ -149,13 +149,26 @@ The following image shows the t´detected line pixels onthe original image for t
 
 #### 5. Describe how (and identify where in your code) you calculated the radius of curvature of the lane and the position of the vehicle with respect to center.
 
-I did this in lines # through # in my code in `my_other_file.py`
+For calculation of the radius the following formular is used:
 
+<img src="https://render.githubusercontent.com/render/math?math=R = \frac{(1 %2B (2 \cdot A \cdot y %2B B)^2 )^{3/2}}{|2 \cdot A|}">
+
+The calculation itself I created the `measure_curverture()` function in the `Line()` class.
+
+To calculate of the cars position with respect to the lane center, I define the position of each lane line with respect to the camera position with the `measure_line_base_pos()` function ine the `Line()` class. When I know the distance between the two lines from the camera position (which is the image center), I can calculate the difference of the camera to the ideal center by adding the two positions (Attention: the left line has always a negative sign)
+
+
+Finaly the results are converted from pixel to meters using a fixed convertion ratio `self.ym_per_pix` (meters per pixel in y dimension) and `self.xm_per_pix`(meters per pixel in x dimension)
+        
 #### 6. Provide an example image of your result plotted back down onto the road such that the lane area is identified clearly.
 
 I implemented this step in lines # through # in my code in `yet_another_file.py` in the function `map_lane()`.  Here is an example of my result on a test image:
 
-![alt text][image6]
+<p>
+    <img src="./output_images/straight_lines1_processed.jpg" alt="Processed image" width="800"/>
+    <br>
+    <em>Processed image after the dection of lane lines, curveture estimation and vehicle position</em>
+</p>
 
 ---
 
@@ -163,7 +176,7 @@ I implemented this step in lines # through # in my code in `yet_another_file.py`
 
 #### 1. Provide a link to your final video output.  Your pipeline should perform reasonably well on the entire project video (wobbly lines are ok but no catastrophic failures that would cause the car to drive off the road!).
 
-Here's a [link to my video result](./project_video.mp4)
+Here's a [link to my video result](.output_videos/project_video.mp4)
 
 ---
 
@@ -171,4 +184,6 @@ Here's a [link to my video result](./project_video.mp4)
 
 #### 1. Briefly discuss any problems / issues you faced in your implementation of this project.  Where will your pipeline likely fail?  What could you do to make it more robust?
 
-Here I'll talk about the approach I took, what techniques I used, what worked and why, where the pipeline might fail and how I might improve it if I were going to pursue this project further.  
+Generally it is quite difficult to find a generic solution which could handle all different kind of input files and also envirnmental conditions. So failed my pipeline for example when I tried the pipeline with images I got from the video, simply because the datatype of the images were `float` insted of `int`. Additionaly it is very difficulat to find thresholds which are good for all different kind of images. So I could imagine to change from simple constant values to threshold maps which allow to have different thresholds e.g. for generally bright images or dark images. Personlly I found color and saturation thresholds as the most powerfull but I added also gradient and lightning thresholds to be a bit more flexible on the images.
+
+Especially with the [Hard Challenge Video](.output_videos/harder_challenge_video.mp4) my algorithm has some problems, coming from rapidly changing lightning conditions which could be improved like mentioned above. But also with the very sharp curves where I think the fixed source points in the perspective transform are limiting the algorithm. I could imagine that a flexible window based on the vehicle speed could help. For lower speeds I don't need a very large outlook, I anyway can only drive curves with a very high radius. For sharp curves I need a much lower vehicle speed and also not that large outlook in y direction.
